@@ -59,6 +59,7 @@ fn main() -> Result<()>
             thread::sleep(Duration::from_millis(200));
         }
 
+	// terminate capture thread
         tx_from_feedback.send(None);
 
         Ok(())
