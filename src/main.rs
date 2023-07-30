@@ -17,6 +17,8 @@ fn main() -> Result<()>
     //let camera = Context::new()?.autodetect_camera().wait().expect("Failed to autodetect camera");
     let (tx_from_feedback, rx_from_feedback) = mpsc::channel();
     const GPIO_SIGNAL: u8 = 17;
+    const SIGNALS_PER_FRAME: u32 = 3;
+    const SIGNAL_CAPTURE_OFFSET: u32 = 1;
     // 
     let mut pin = Gpio::new().unwrap().get(GPIO_SIGNAL).unwrap().into_input();
     let mut count: u32 = 0;
@@ -36,15 +38,15 @@ fn main() -> Result<()>
     // sinal
     let signal_feedback_thread = thread::spawn(move || -> Result<()> {
         let mut signal_counter: u32 = 0;
-        let mut should_capture: bool = false;
 	pin.set_interrupt(Trigger::RisingEdge);
+
         loop {
 	    pin.poll_interrupt(true, None);
 
 	    println!("Pin signal high");
             signal_counter += 1;
-            should_capture = signal_counter % 3 == 1;
-            if should_capture {
+
+            if signal_counter % SIGNALS_PER_FRAME == SIGNAL_CAPTURE_OFFSET {
                 println!("Sending signal with count: {}", signal_counter);
                 tx_from_feedback.send(Some(1));
             }
@@ -54,7 +56,7 @@ fn main() -> Result<()>
             }
 
 	    // timeout to not register signal more than once
-            thread::sleep(Duration::from_millis(200));
+            thread::sleep(Duration::from_millis(500));
         }
 
 	// terminate capture thread
@@ -64,10 +66,10 @@ fn main() -> Result<()>
     });
 
     // wait for first signal
-    let capture_thread = thread::spawn(move || -> Result<()> {
-        let mut capture_name = String::new();
+    let _capture_thread = thread::spawn(move || -> Result<()> {
+        let mut capture_name;
 
-        while let Some(should_capture) = rx_from_feedback.recv().unwrap() {
+        while let Some(_) = rx_from_feedback.recv().unwrap() {
             count += 1;
             capture_name = format!("capture_{count:0>9}.arw").to_string();
             let now = Instant::now();
