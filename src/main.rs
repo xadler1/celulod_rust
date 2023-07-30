@@ -5,7 +5,7 @@ use std::time::Duration;
 use std::time::Instant;
 use std::sync::mpsc;
 use rppal::gpio::Gpio;
-use rppal::gpio::Error;
+use rppal::gpio::Trigger;
 
 
 fn main() -> Result<()>
@@ -37,11 +37,9 @@ fn main() -> Result<()>
     let signal_feedback_thread = thread::spawn(move || -> Result<()> {
         let mut signal_counter: u32 = 0;
         let mut should_capture: bool = false;
+	pin.set_interrupt(Trigger::RisingEdge);
         loop {
-	    if pin.is_low() {
-		thread::sleep(Duration::from_millis(5));
-		continue;
-	    }
+	    pin.poll_interrupt(true, None);
 
 	    println!("Pin signal high");
             signal_counter += 1;
