@@ -60,10 +60,10 @@ fn main() -> Result<()>
             	//if signal_counter % SIGNALS_PER_FRAME == SIGNAL_CAPTURE_OFFSET {
 	    	//println!("Sending signal with count: {}", signal_counter);
             	tx_from_feedback.send(Some(1));
+	    	thread::sleep(Duration::from_millis(5));
 
 	    	pin_output.set_low();
 	    	thread::sleep(Duration::from_millis(5000));
-	    	pin_output.set_high();
 	    	//now = Instant::now();
             	//}
 
@@ -71,6 +71,8 @@ fn main() -> Result<()>
             	if signal_counter > 16 {
             	    break;
             	}
+
+	    	pin_output.set_high();
 
 	    	// timeout to not register signal more than once
             	//thread::sleep(Duration::from_millis(100));
