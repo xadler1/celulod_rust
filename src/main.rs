@@ -22,7 +22,7 @@ fn main() -> Result<()>
     const SIGNALS_PER_FRAME: u32 = 1;
     const SIGNAL_CAPTURE_OFFSET: u32 = 0;
     // 
-    let mut pin_input = Gpio::new().unwrap().get(GPIO_INPUT).unwrap().into_input();
+    let mut pin_input = Gpio::new().unwrap().get(GPIO_INPUT).unwrap().into_input_pullup();
     let mut pin_output = Gpio::new().unwrap().get(GPIO_OUTPUT).unwrap().into_output();
     pin_output.set_low();
     let mut count: u32 = 0;
