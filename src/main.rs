@@ -33,16 +33,15 @@ fn main() -> Result<()>
 
 	let mut signal_counter: u32 = 0;
 	pin_input.set_interrupt(Trigger::FallingEdge);
-	pin_output.set_high();
 
 	loop {
+		pin_output.set_high();
 		pin_input.poll_interrupt(true, None);
 		// Simple hysteresis
 		thread::sleep(Duration::from_millis(10));
 
-		if (pin_input.is_low()) {
-
-			thread::sleep(Duration::from_millis(5000));
+		if pin_input.is_low() {
+			pin_output.set_low();
 			// Capture image
 			file = camera.capture_image().wait()?;
 
@@ -50,22 +49,28 @@ fn main() -> Result<()>
 			thread::sleep(Duration::from_millis(5));
 			pin_output.set_low();
 
+			// "Slower tasks"
 			// Download image
 			camera
 				.fs()
 				.download_to(&file.folder(), &file.name(), Path::new(&capture_name))
 				.wait()?;
 			println!("Downloaded image {}", capture_name);
+
 			count += 1;
+			capture_name = format!("capture_{count:0>9}.arw").to_string();
 
 			signal_counter += 1;
-			if signal_counter > 16 {
+			if signal_counter > 24 {
 				break;
 			}
 
 			// Renew camera context
-			camera.drop();
+			drop(camera);
 			camera = Context::new()?.autodetect_camera().wait().expect("Failed to autodetect camera");
+
+			// Wait a bit
+			//thread::sleep(Duration::from_millis(2000));
 
 			pin_output.set_high();
 		}
@@ -74,10 +79,7 @@ fn main() -> Result<()>
 
 	pin_output.set_low();
 
-
-
 	println!("The wait is over.");
-
 	Ok(())
 }
 
