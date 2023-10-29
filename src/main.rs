@@ -44,13 +44,9 @@ fn main() -> Result<()>
 
         pin_input_state_current = pin_input.read();
         if (pin_input_state_last == Level::High && pin_input_state_current == Level::Low) {
-			// Capture image
-			file = camera.capture_image();
-            thread::sleep(Duration::from_millis(10));
 			pin_output.set_low();
-
-            // wait for capture completion
-            thread::sleep(Duration::from_millis(3000));
+			// Capture image
+			file = camera.capture_image().wait()?;
 
 			// "Slower tasks"
 			// Download image
