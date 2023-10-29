@@ -6,7 +6,7 @@ use std::time::Instant;
 use std::sync::mpsc;
 use rppal::gpio::Gpio;
 use rppal::gpio::Trigger;
-use rppal::gpio::Level
+use rppal::gpio::Level;
 
 
 fn main() -> Result<()>
@@ -16,7 +16,7 @@ fn main() -> Result<()>
 
 	const GPIO_INPUT: u8 = 3;
 	const GPIO_OUTPUT: u8 = 17;
-	const POLLING_FREQUENCY_MS = 1;
+	const POLLING_FREQUENCY_MS: u64 = 1;
 	//
 	let mut pin_input = Gpio::new().unwrap().get(GPIO_INPUT).unwrap().into_input_pullup();
 	let mut pin_output = Gpio::new().unwrap().get(GPIO_OUTPUT).unwrap().into_output();
@@ -30,8 +30,8 @@ fn main() -> Result<()>
 	let mut camera = Context::new()?.autodetect_camera().wait().expect("Failed to autodetect camera");
 	capture_name = format!("capture_{count:0>9}.arw").to_string();
 	let mut file;
-    let mut input_pin_state_last = pin_input.read();
-    let mut input_pin_state_current = pin_input.read();
+    let mut pin_input_state_last = pin_input.read();
+    let mut pin_input_state_current = pin_input.read();
 
 
 
@@ -42,8 +42,8 @@ fn main() -> Result<()>
 		pin_output.set_high();
 		//pin_input.poll_interrupt(true, None);
 
-        input_pin_state_current = pin_input.read();
-        if (input_pin_state_last == Level::High && pin_input_state_current == Level::Low) {
+        pin_input_state_current = pin_input.read();
+        if (pin_input_state_last == Level::High && pin_input_state_current == Level::Low) {
 			pin_output.set_low();
 			// Capture image
 			file = camera.capture_image().wait()?;
@@ -70,6 +70,7 @@ fn main() -> Result<()>
 
 			pin_output.set_high();
 		}
+		pin_input_state_last = pin_input_state_current;
 
 		thread::sleep(Duration::from_millis(POLLING_FREQUENCY_MS));
 	}
