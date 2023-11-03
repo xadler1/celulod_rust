@@ -74,6 +74,10 @@ fn main() -> Result<()>
 	let mut ps_14 = Level::Low;
 	let mut ps_15 = Level::Low;
 
+	let mut pin_input_states: [Level; 16] = [Level::Low; 16];
+	let states_low: [Level; 8] = [Level::Low; 8];
+	let states_high: [Level; 8] = [Level::High; 8];
+
 
 	let mut signal_counter: u32 = 0;
 
@@ -81,9 +85,8 @@ fn main() -> Result<()>
 		pin_output.set_high();
 		//pin_input.poll_interrupt(true, None);
 
-		ps_15 = pin_input.read();
-		if ps_0 == Level::High && ps_1 == Level::High && ps_2 == Level::High && ps_3 == Level::High && ps_4 == Level::High && ps_5 == Level::High && ps_6 == Level::High && ps_7 == Level::High &&
-		   ps_8 == Level::Low && ps_9 == Level::Low && ps_10 == Level::Low && ps_11 == Level::Low && ps_12 == Level::Low && ps_13 == Level::Low && ps_14 == Level::Low && ps_15 == Level::Low {
+		pin_input_states[15] = pin_input.read();
+		if pin_input_states[0..8] == states_high && pin_input_states[8..16] == states_low {
 			// Capture image
 			tx_from_feedback.send(Some(1));
 			thread::sleep(Duration::from_millis(20));
@@ -94,27 +97,15 @@ fn main() -> Result<()>
 			thread::sleep(Duration::from_millis(3500));
 
 			signal_counter += 1;
-			if signal_counter > 64 {
+			if signal_counter > 16 {
 				break;
 			}
 
 		}
 
-		ps_0 = ps_1;
-		ps_1 = ps_2;
-		ps_2 = ps_3;
-		ps_3 = ps_4;
-		ps_4 = ps_5;
-		ps_5 = ps_6;
-		ps_6 = ps_7;
-		ps_7 = ps_8;
-		ps_8 = ps_9;
-		ps_9 = ps_10;
-		ps_10 = ps_11;
-		ps_11 = ps_12;
-		ps_12 = ps_13;
-		ps_13 = ps_14;
-		ps_14 = ps_15;
+		for i in 0..15 {
+			pin_input_states[i] = pin_input_states[i + 1];
+		}
 
 
 		pin_output.set_high();
