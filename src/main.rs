@@ -57,23 +57,6 @@ fn main() -> Result<()>
 		Ok(())
 	});
 
-	let mut ps_0 = Level::Low;
-	let mut ps_1 = Level::Low;
-	let mut ps_2 = Level::Low;
-	let mut ps_3 = Level::Low;
-	let mut ps_4 = Level::Low;
-	let mut ps_5 = Level::Low;
-	let mut ps_6 = Level::Low;
-	let mut ps_7 = Level::Low;
-	let mut ps_8 = Level::Low;
-	let mut ps_9 = Level::Low;
-	let mut ps_10 = Level::Low;
-	let mut ps_11 = Level::Low;
-	let mut ps_12 = Level::Low;
-	let mut ps_13 = Level::Low;
-	let mut ps_14 = Level::Low;
-	let mut ps_15 = Level::Low;
-
 	let mut pin_input_states: [Level; 16] = [Level::Low; 16];
 	let states_low: [Level; 8] = [Level::Low; 8];
 	let states_high: [Level; 8] = [Level::High; 8];
@@ -89,7 +72,7 @@ fn main() -> Result<()>
 		if pin_input_states[0..8] == states_high && pin_input_states[8..16] == states_low {
 			// Capture image
 			tx_from_feedback.send(Some(1));
-			thread::sleep(Duration::from_millis(20));
+			thread::sleep(Duration::from_millis(300));
 
 			pin_output.set_low();
 
