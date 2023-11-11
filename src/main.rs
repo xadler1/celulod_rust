@@ -60,6 +60,7 @@ fn main() -> Result<()>
 	let mut pin_input_states: [Level; 16] = [Level::Low; 16];
 	let states_low: [Level; 8] = [Level::Low; 8];
 	let states_high: [Level; 8] = [Level::High; 8];
+	let mut capturing = false;
 
 
 	let mut signal_counter: u32 = 0;
@@ -72,17 +73,21 @@ fn main() -> Result<()>
 		if pin_input_states[0..8] == states_high && pin_input_states[8..16] == states_low {
 			// Capture image
 			tx_from_feedback.send(Some(1));
-			thread::sleep(Duration::from_millis(300));
+			capturing = true;
+		}
 
+		if capturing && pin_input_states[0..8] == states_low && pin_input_states[8..16] == states_high {
 			pin_output.set_low();
 
 			// could wait for feedback from capture thread instead
 			thread::sleep(Duration::from_millis(3500));
 
 			signal_counter += 1;
-			if signal_counter > 16 {
+			if signal_counter > 32 {
 				break;
 			}
+
+			capturing = false;
 
 		}
 
