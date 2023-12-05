@@ -9,6 +9,9 @@ use rppal::gpio::Trigger;
 use rppal::gpio::Level;
 
 
+const STATES_LOW: [Level; 8] = [Level::Low; 8];
+const STATES_HIGH: [Level; 8] = [Level::High; 8];
+
 fn main() -> Result<()>
 {
 	// init section
@@ -20,6 +23,7 @@ fn main() -> Result<()>
 	const POLLING_FREQUENCY_US: u64 = 125;
 	//
 	let (tx_from_feedback, rx_from_feedback) = mpsc::channel();
+	let (tx_from_capture, rx_from_capture) = mpsc::channel();
 	let pin_input = Gpio::new().unwrap().get(GPIO_INPUT).unwrap().into_input_pullup();
 	let mut pin_output = Gpio::new().unwrap().get(GPIO_OUTPUT).unwrap().into_output();
 	pin_output.set_low();
@@ -52,14 +56,15 @@ fn main() -> Result<()>
 			// Renew camera context
 			drop(camera);
 			camera = Context::new()?.autodetect_camera().wait().expect("Failed to autodetect camera");
+
+			// 
+			tx_from_capture.send(Some(1));
 		}
 
 		Ok(())
 	});
 
-	let mut pin_input_states: [Level; 16] = [Level::Low; 16];
-	let states_low: [Level; 8] = [Level::Low; 8];
-	let states_high: [Level; 8] = [Level::High; 8];
+	let mut pin_input_states: [Level; 16] = [Level::High; 16];
 	let mut capturing = false;
 
 
@@ -70,24 +75,30 @@ fn main() -> Result<()>
 		//pin_input.poll_interrupt(true, None);
 
 		pin_input_states[15] = pin_input.read();
-		if pin_input_states[0..8] == states_high && pin_input_states[8..16] == states_low {
+		//println!("{}", pin_input_states[15]);
+		if !capturing && is_falling(pin_input_states) {
 			// Capture image
 			tx_from_feedback.send(Some(1));
 			capturing = true;
+			//println!("Capture start");
 		}
 
-		if capturing && pin_input_states[0..8] == states_low && pin_input_states[8..16] == states_high {
+		if capturing && is_rising(pin_input_states) {
 			pin_output.set_low();
+			//println!("Stop motor");
 
-			// could wait for feedback from capture thread instead
-			thread::sleep(Duration::from_millis(3500));
+			// wait for capture feedback
+			while let Some(_) = rx_from_capture.recv().unwrap() {
+				break;
+			}
 
 			signal_counter += 1;
-			if signal_counter > 32 {
+			if signal_counter > 64 {
 				break;
 			}
 
 			capturing = false;
+			//println!("Capture end");
 
 		}
 
@@ -122,4 +133,14 @@ fn capture_image(capture_name: String) -> Result<()>
 	println!("Downloaded image {}", capture_name);
 
 	Ok(())
+}
+
+fn is_rising(states: [Level; 16]) -> bool
+{
+	return states[0..8] == STATES_HIGH && states[8..16] == STATES_LOW;
+}
+
+fn is_falling(states: [Level; 16]) -> bool
+{
+	return states[0..8] == STATES_LOW && states[8..16] == STATES_HIGH;
 }
