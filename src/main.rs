@@ -11,6 +11,7 @@ use rppal::gpio::Level;
 
 const STATES_LOW: [Level; 8] = [Level::Low; 8];
 const STATES_HIGH: [Level; 8] = [Level::High; 8];
+const STOP_COUNT: u64 = 64;
 
 fn main() -> Result<()>
 {
@@ -31,6 +32,7 @@ fn main() -> Result<()>
 
 	// first capture takes a lot longer
 	capture_image(format!("capture_000000000.arw").to_string());
+	
 
 
 	//pin_input.set_interrupt(Trigger::FallingEdge);
@@ -68,7 +70,9 @@ fn main() -> Result<()>
 	let mut capturing = false;
 
 
-	let mut signal_counter: u32 = 0;
+	let mut signal_counter: u64 = 0;
+	let mut now = Instant::now();
+	let start = Instant::now();
 
 	loop {
 		pin_output.set_high();
@@ -81,10 +85,12 @@ fn main() -> Result<()>
 			tx_from_feedback.send(Some(1));
 			capturing = true;
 			//println!("Capture start");
+			now = Instant::now();
 		}
 
 		if capturing && is_rising(pin_input_states) {
 			pin_output.set_low();
+			println!("{}", now.elapsed().as_millis());
 			//println!("Stop motor");
 
 			// wait for capture feedback
@@ -93,7 +99,7 @@ fn main() -> Result<()>
 			}
 
 			signal_counter += 1;
-			if signal_counter > 64 {
+			if signal_counter > STOP_COUNT {
 				break;
 			}
 
@@ -114,6 +120,12 @@ fn main() -> Result<()>
 	}
 
 	pin_output.set_low();
+
+
+	println!("Total time: {}", start.elapsed().as_millis());
+	println!("Average time per frame: {}", start.elapsed().as_millis() / (STOP_COUNT as u128 + 1));
+
+
 	capture_thread.join().unwrap()?;
 
 	println!("The wait is over.");
