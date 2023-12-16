@@ -76,44 +76,43 @@ fn main() -> Result<()>
 
 
 	let mut capturing = false;
-    let mut signal_counter = 0;
+	let mut signal_counter = 0;
 	let pin_input = Gpio::new().unwrap().get(GPIO_INPUT).unwrap().into_input_pullup();
 	let mut pin_output = Gpio::new().unwrap().get(GPIO_OUTPUT).unwrap().into_output();
 	let mut pin_input_states: [Level; 16] = [Level::High; 16];
-    let mut stop_count = STOP_COUNT;
+	let mut stop_count = STOP_COUNT;
 
-    let control_thread = thread::spawn(move || {
-	    loop {
-        while let Some(message) = rx_from_main_start.recv().unwrap() {
+	let control_thread = thread::spawn(move || {
+		loop {
+		while let Some(message) = rx_from_main_start.recv().unwrap() {
 		stop_count = message;
-            break;
-        }
+			break;
+		}
 
-        println!("Capturing {} images", stop_count);
+		println!("Capturing {} images", stop_count);
 	let mut now = Instant::now();
 	let mut waited: u128 = 0;
 	let mut file = OpenOptions::new().write(true).create(true).append(true).open("stats.txt").unwrap();
-	    loop {
-	    	pin_output.set_high();
-	    	thread::sleep(Duration::from_micros(POLLING_FREQUENCY_US));
+		loop {
+			pin_output.set_high();
+			thread::sleep(Duration::from_micros(POLLING_FREQUENCY_US));
 
-	    	pin_input_states[15] = pin_input.read();
+			pin_input_states[15] = pin_input.read();
 		debug_stats.push(pin_input_states[15]);
 
-	    	if !capturing && is_rising(pin_input_states) {
-	    		// Capture image
-	    		tx_from_feedback.send(Ok(Some(1)));
-	    		capturing = true;
+			if !capturing && is_rising(pin_input_states) {
+				// Capture image
+				tx_from_feedback.send(Ok(Some(1)));
+				capturing = true;
 			now = Instant::now();
-	    	}
+			}
 
-	    	if capturing && is_falling(pin_input_states) {
+			if capturing && is_falling(pin_input_states) {
 			waited = now.elapsed().as_millis();
-			//thread::sleep(Duration::from_millis((175 - waited) as u64));
 
-	    		pin_output.set_low();
+				pin_output.set_low();
 			println!("{}", waited);
-	    		// wait for capture feedback
+				// wait for capture feedback
 			loop {
 				match rx_from_capture.recv().unwrap() {
 					Ok(_) => break,
@@ -121,12 +120,13 @@ fn main() -> Result<()>
 				}
 			}
 
-	    		signal_counter += 1;
-	    		if stop_count != 0 && signal_counter >= stop_count {
-	    			break;
-	    		}
 
-	    		capturing = false;
+				signal_counter += 1;
+				if stop_count != 0 && signal_counter >= stop_count {
+					break;
+				}
+
+				capturing = false;
 
 			match rx_from_main_status.try_recv() {
 				Ok(_) => {
@@ -146,44 +146,41 @@ fn main() -> Result<()>
 			}
 
 			for i in 0..debug_stats.len() {
-				let mut symbol: u8 = 40;
+				let mut symbol: u8 = 48;
 				if (debug_stats[i] == Level::High) {
-					symbol = 41;
+					symbol = 49;
 				}
 				file.write_all(&[symbol]);
 			}
 			debug_stats = vec![];
-	    	}
+			}
 
-	    	for i in 0..15 {
-	    		pin_input_states[i] = pin_input_states[i + 1];
-	    	}
+			for i in 0..15 {
+				pin_input_states[i] = pin_input_states[i + 1];
+			}
 
-	    }
-	    }
-    });
+		}
+		}
+	});
 
 
 
-    loop {
-        let input = prompt("> ");
+	loop {
+		let input = prompt("> ");
 
-        if input == "capture" {
-            let capture_count: u64 = prompt("> count? ").parse().unwrap();
-            tx_from_main_start.send(Some(capture_count));
-        } else if input == "stop" {
-            tx_from_main_stop.send(Some(1));
-        } else if input == "status" {
-            tx_from_main_status.send(Some(1));
-        } else if input == "exit" {
-            break;
-        } else {
-            println!("unknown commanad");
-        }
-    }
-
-	stop_motor();
-
+		if input == "capture" {
+			let capture_count: u64 = prompt("> count? ").parse().unwrap();
+			tx_from_main_start.send(Some(capture_count));
+		} else if input == "stop" {
+			tx_from_main_stop.send(Some(1));
+		} else if input == "status" {
+			tx_from_main_status.send(Some(1));
+		} else if input == "exit" {
+			break;
+		} else {
+			println!("unknown commanad");
+		}
+	}
 
 	//capture_thread.join().unwrap()?;
 
@@ -224,9 +221,9 @@ fn stop_motor()
 // Interactive functions
 fn prompt(prompt: &str) -> String
 {
-    let mut line = String::new();
-    print!("{}", prompt);
-    std::io::stdout().flush().unwrap();
-    std::io::stdin().read_line(&mut line).expect("Error reading line");
-    return line.trim().to_string();
+	let mut line = String::new();
+	print!("{}", prompt);
+	std::io::stdout().flush().unwrap();
+	std::io::stdin().read_line(&mut line).expect("Error reading line");
+	return line.trim().to_string();
 }
