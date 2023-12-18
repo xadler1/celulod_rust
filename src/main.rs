@@ -108,17 +108,17 @@ fn main() -> Result<()>
 			}
 
 			if capturing && is_falling(pin_input_states) {
-			waited = now.elapsed().as_millis();
+				waited = now.elapsed().as_millis();
 
 				pin_output.set_low();
-			println!("{}", waited);
-				// wait for capture feedback
-			loop {
-				match rx_from_capture.recv().unwrap() {
-					Ok(_) => break,
-					Err(_) => break,
+				println!("{}", waited);
+					// wait for capture feedback
+				loop {
+					match rx_from_capture.recv().unwrap() {
+						Ok(_) => break,
+						Err(_) => break,
+					}
 				}
-			}
 
 
 				signal_counter += 1;
@@ -128,31 +128,33 @@ fn main() -> Result<()>
 
 				capturing = false;
 
-			match rx_from_main_status.try_recv() {
-				Ok(_) => {
-					println!("Captured {} of {} images.", signal_counter, stop_count);
-				},
-				Err(TryRecvError::Disconnected) => {},
-				Err(TryRecvError::Empty) => {},
-			}
-
-			match rx_from_main_stop.try_recv() {
-				Ok(_) => {
-					println!("Captured {} images.", signal_counter);
-					break;
-				},
-				Err(TryRecvError::Disconnected) => {},
-				Err(TryRecvError::Empty) => {},
-			}
-
-			for i in 0..debug_stats.len() {
-				let mut symbol: u8 = 48;
-				if (debug_stats[i] == Level::High) {
-					symbol = 49;
+				match rx_from_main_status.try_recv() {
+					Ok(_) => {
+						println!("Captured {} of {} images.", signal_counter, stop_count);
+					},
+					Err(TryRecvError::Disconnected) => {},
+					Err(TryRecvError::Empty) => {},
 				}
-				file.write_all(&[symbol]);
-			}
-			debug_stats = vec![];
+
+				match rx_from_main_stop.try_recv() {
+					Ok(_) => {
+						println!("Captured {} images.", signal_counter);
+						break;
+					},
+					Err(TryRecvError::Disconnected) => {},
+					Err(TryRecvError::Empty) => {},
+				}
+
+				for i in 0..debug_stats.len() {
+					let mut symbol: u8 = 48;
+					if (debug_stats[i] == Level::High) {
+						symbol = 49;
+					}
+					file.write_all(&[symbol]);
+				}
+				debug_stats = vec![];
+				// Could this fix occasional delayed captures? NO
+				//thread::sleep(Duration::from_millis(1000));
 			}
 
 			for i in 0..15 {
