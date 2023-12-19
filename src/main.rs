@@ -84,84 +84,88 @@ fn main() -> Result<()>
 
 	let control_thread = thread::spawn(move || {
 		loop {
-		while let Some(message) = rx_from_main_start.recv().unwrap() {
-		stop_count = message;
-			break;
-		}
-
-		println!("Capturing {} images", stop_count);
-	let mut now = Instant::now();
-	let mut waited: u128 = 0;
-	let mut file = OpenOptions::new().write(true).create(true).append(true).open("stats.txt").unwrap();
-		loop {
-			pin_output.set_high();
-			thread::sleep(Duration::from_micros(POLLING_FREQUENCY_US));
-
-			pin_input_states[15] = pin_input.read();
-		debug_stats.push(pin_input_states[15]);
-
-			if !capturing && is_rising(pin_input_states) {
-				// Capture image
-				tx_from_feedback.send(Ok(Some(1)));
-				capturing = true;
-			now = Instant::now();
+			while let Some(message) = rx_from_main_start.recv().unwrap() {
+				stop_count = message;
+				break;
 			}
 
-			if capturing && is_falling(pin_input_states) {
-				waited = now.elapsed().as_millis();
+			println!("Capturing {} images", stop_count);
+			let mut now = Instant::now();
+			let mut now_complement = Instant::now();
+			let mut waited: u128 = 0;
+			let mut waited_complement: u128 = 0;
+			let mut file = OpenOptions::new().write(true).create(true).append(true).open("stats.txt").unwrap();
+			loop {
+				pin_output.set_high();
+				thread::sleep(Duration::from_micros(POLLING_FREQUENCY_US));
 
-				pin_output.set_low();
-				println!("{}", waited);
-					// wait for capture feedback
-				loop {
-					match rx_from_capture.recv().unwrap() {
-						Ok(_) => break,
-						Err(_) => break,
+				pin_input_states[15] = pin_input.read();
+				debug_stats.push(pin_input_states[15]);
+
+				if !capturing && is_rising(pin_input_states) {
+					// Capture image
+					tx_from_feedback.send(Ok(Some(1)));
+					capturing = true;
+					now = Instant::now();
+					waited_complement = now_complement.elapsed().as_millis();
+				}
+
+				if capturing && is_falling(pin_input_states) {
+					waited = now.elapsed().as_millis();
+
+					pin_output.set_low();
+					println!("Waited: {}, Waited complement: {}", waited, waited_complement);
+						// wait for capture feedback
+					loop {
+						match rx_from_capture.recv().unwrap() {
+							Ok(_) => break,
+							Err(_) => break,
+						}
 					}
-				}
 
 
-				signal_counter += 1;
-				if stop_count != 0 && signal_counter >= stop_count {
-					break;
-				}
-
-				capturing = false;
-
-				match rx_from_main_status.try_recv() {
-					Ok(_) => {
-						println!("Captured {} of {} images.", signal_counter, stop_count);
-					},
-					Err(TryRecvError::Disconnected) => {},
-					Err(TryRecvError::Empty) => {},
-				}
-
-				match rx_from_main_stop.try_recv() {
-					Ok(_) => {
-						println!("Captured {} images.", signal_counter);
+					signal_counter += 1;
+					if stop_count != 0 && signal_counter >= stop_count {
 						break;
-					},
-					Err(TryRecvError::Disconnected) => {},
-					Err(TryRecvError::Empty) => {},
-				}
-
-				for i in 0..debug_stats.len() {
-					let mut symbol: u8 = 48;
-					if (debug_stats[i] == Level::High) {
-						symbol = 49;
 					}
-					file.write_all(&[symbol]);
+
+					capturing = false;
+
+					match rx_from_main_status.try_recv() {
+						Ok(_) => {
+							println!("Captured {} of {} images.", signal_counter, stop_count);
+						},
+						Err(TryRecvError::Disconnected) => {},
+						Err(TryRecvError::Empty) => {},
+					}
+
+					match rx_from_main_stop.try_recv() {
+						Ok(_) => {
+							println!("Captured {} images.", signal_counter);
+							break;
+						},
+						Err(TryRecvError::Disconnected) => {},
+						Err(TryRecvError::Empty) => {},
+					}
+
+					for i in 0..debug_stats.len() {
+						let mut symbol: u8 = 48;
+						if (debug_stats[i] == Level::High) {
+							symbol = 49;
+						}
+						file.write_all(&[symbol]);
+					}
+					debug_stats = vec![];
+					// Could this fix occasional delayed captures? NO
+					//thread::sleep(Duration::from_millis(1000));
+					now_complement = Instant::now();
 				}
-				debug_stats = vec![];
-				// Could this fix occasional delayed captures? NO
-				//thread::sleep(Duration::from_millis(1000));
-			}
 
-			for i in 0..15 {
-				pin_input_states[i] = pin_input_states[i + 1];
-			}
+				for i in 0..15 {
+					pin_input_states[i] = pin_input_states[i + 1];
+				}
 
-		}
+			}
 		}
 	});
 
