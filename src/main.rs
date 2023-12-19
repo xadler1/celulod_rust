@@ -46,26 +46,36 @@ fn main() -> Result<()>
 		let mut camera = Context::new()?.autodetect_camera().wait().expect("Failed to autodetect camera");
 		let mut capture_name = format!("capture_{count:0>9}.arw").to_string();
 		let mut file;
+		//let mut tmp_file;
+		let mut timer = Instant::now();
+		let mut timer_time_ms;
 
 		loop {
 			match rx_from_feedback.recv().unwrap() {
-				Ok(_) => {file = camera.capture_image().wait()?;
+				Ok(_) => {
+					timer = Instant::now();
+					file = camera.capture_image().wait()?;
+					timer_time_ms = timer.elapsed().as_millis();
+					println!("Capture time: {}, Capture name: {}", timer_time_ms, capture_name);
+					//file = tmp_file.wait()?;
 
-				camera
-					.fs()
-					.download_to(&file.folder(), &file.name(), Path::new(&capture_name))
-					.wait()?;
-				//println!("Downloaded image {}", capture_name);
 
-				count += 1;
-				capture_name = format!("capture_{count:0>9}.arw").to_string();
 
-				// Renew camera context
-				drop(camera);
-				camera = Context::new()?.autodetect_camera().wait().expect("Failed to autodetect camera");
+					camera
+						.fs()
+						.download_to(&file.folder(), &file.name(), Path::new(&capture_name))
+						.wait()?;
+					//println!("Downloaded image {}", capture_name);
 
-				// Signal that capture is complete
-				tx_from_capture.send(Ok(Some(1)));
+					count += 1;
+					capture_name = format!("capture_{count:0>9}.arw").to_string();
+
+					// Renew camera context
+					drop(camera);
+					camera = Context::new()?.autodetect_camera().wait().expect("Failed to autodetect camera");
+
+					// Signal that capture is complete
+					tx_from_capture.send(Ok(Some(1)));
 				},
 				Err(_) => break,
 			}
